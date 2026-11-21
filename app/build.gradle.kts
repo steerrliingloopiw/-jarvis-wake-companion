@@ -29,4 +29,5 @@ android {
 dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.core:core-ktx:1.16.0")
+    implementation("com.github.msnilsen:openwakeword-android:0.1.0")
 }
