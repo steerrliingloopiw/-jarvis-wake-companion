@@ -2,7 +2,9 @@
 package com.jarvis.wake
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
@@ -29,68 +31,78 @@ class MainActivity : ComponentActivity() {
         }
 
         statusText = TextView(this).apply {
-            text = "Wake detector not started"
+            text = "Service stopped"
             textSize = 16f
             setPadding(0, 30, 0, 30)
         }
 
-        val startButton = Button(this).apply {
-            text = "Enable microphone permission"
+        val permissionButton = Button(this).apply {
+            text = "Grant Permissions"
             setOnClickListener {
-                requestMicrophonePermission()
+                requestPermissionsIfNeeded()
+            }
+        }
+
+        val startButton = Button(this).apply {
+            text = "Start Wake Service"
+            setOnClickListener {
+                if (hasMicrophonePermission()) {
+                    val serviceIntent = Intent(
+                        this@MainActivity,
+                        WakeWordService::class.java
+                    )
+
+                    ContextCompat.startForegroundService(
+                        this@MainActivity,
+                        serviceIntent
+                    )
+
+                    statusText.text = "Background service started"
+                } else {
+                    requestPermissionsIfNeeded()
+                }
+            }
+        }
+
+        val stopButton = Button(this).apply {
+            text = "Stop Wake Service"
+            setOnClickListener {
+                stopService(
+                    Intent(this@MainActivity, WakeWordService::class.java)
+                )
+                statusText.text = "Service stopped"
             }
         }
 
         layout.addView(title)
         layout.addView(statusText)
+        layout.addView(permissionButton)
         layout.addView(startButton)
+        layout.addView(stopButton)
 
         setContentView(layout)
-
-        updateStatus()
     }
 
-    private fun requestMicrophonePermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                100
-            )
-        } else {
-            statusText.text = "Microphone permission granted"
-        }
-    }
-
-    private fun updateStatus() {
-        val granted = ContextCompat.checkSelfPermission(
+    private fun hasMicrophonePermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
-
-        statusText.text = if (granted) {
-            "Microphone permission granted"
-        } else {
-            "Microphone permission required"
-        }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(
-            requestCode,
-            permissions,
-            grantResults
+    private fun requestPermissionsIfNeeded() {
+        val permissions = mutableListOf(
+            Manifest.permission.RECORD_AUDIO
         )
 
-        updateStatus()
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        ActivityCompat.requestPermissions(
+            this,
+            permissions.toTypedArray(),
+            100
+        )
     }
 }
-
